@@ -24,12 +24,7 @@ export const TopNav = () => {
         <div className="container flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group" aria-label="SkillGraph home">
             {/* Logo placeholder — drop your logo image here */}
-            <div
-              className="relative flex h-10 w-10 items-center justify-center rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 text-[10px] font-semibold uppercase tracking-wide text-primary/70 transition-colors group-hover:border-primary/60"
-              aria-label="Logo placeholder"
-            >
-              Logo
-            </div>
+            
             <span className="text-lg font-bold tracking-tight">
               Skill<span className="text-gradient">Graph</span>
             </span>

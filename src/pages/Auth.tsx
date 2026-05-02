@@ -41,13 +41,7 @@ const Shell = ({ title, subtitle, children, footer, wide }: { title: string; sub
   <div className="min-h-screen flex flex-col">
     <div className="absolute inset-0 bg-gradient-hero pointer-events-none -z-10" />
     <header className="container py-6">
-      <Link to="/" className="inline-flex items-center gap-3" aria-label="SkillGraph home">
-        <div
-          className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 text-[10px] font-semibold uppercase tracking-wide text-primary/70"
-          aria-label="Logo placeholder"
-        >
-          Logo
-        </div>
+      <Link to="/" className="inline-flex items-center gap-3" aria-label="SkillGraph home">        
         <span className="text-lg font-bold">Skill<span className="text-gradient">Graph</span></span>
       </Link>
     </header>
