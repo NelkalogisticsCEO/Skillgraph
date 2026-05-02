@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skillgraph — Find Your Co-Founder</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --surface:#fff;--s2:#f5f6f8;--s3:#eceef2;
+  --border:#e2e5eb;--border2:#cdd1db;
+  --accent:#1a73e8;--ah:#1557b0;--alt:#e8f0fe;
+  --text:#202124;--t2:#3c4043;--muted:#5f6368;--m2:#9aa0a6;
+  --green:#34a853;
+  --sh:0 2px 6px rgba(0,0,0,.15),0 0 0 1px rgba(0,0,0,.08);
+  --shl:0 4px 20px rgba(0,0,0,.18),0 1px 4px rgba(0,0,0,.1);
+}
+html,body{height:100%;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);-webkit-font-smoothing:antialiased;overflow:hidden;}
+button,input,select{font-family:inherit;cursor:pointer;}
+#map{position:absolute;inset:0;z-index:0;}
+
+/* Search bar */
+.top-bar{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:1000;width:min(640px,calc(100% - 28px));}
+.search-shell{display:flex;align-items:center;background:var(--surface);border-radius:24px;box-shadow:var(--shl);overflow:hidden;}
+.sg-logo{display:flex;align-items:center;gap:6px;padding:0 14px 0 16px;font-size:15px;font-weight:700;letter-spacing:-.03em;color:var(--text);flex-shrink:0;border-right:1px solid var(--border);height:48px;}
+.lm{width:22px;height:22px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.si-wrap{flex:1;position:relative;}
+.si-wrap input{width:100%;height:48px;padding:0 16px 0 38px;border:none;outline:none;font-size:14px;color:var(--text);background:transparent;}
+.si-wrap input::placeholder{color:var(--m2);}
+.si-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--m2);pointer-events:none;display:flex;}
+.ssep{width:1px;background:var(--border);height:28px;flex-shrink:0;}
+.sfbtn{display:flex;align-items:center;gap:6px;padding:0 16px;height:48px;border:none;background:transparent;color:var(--muted);font-size:13px;font-weight:500;transition:background .15s;flex-shrink:0;position:relative;}
+.sfbtn:hover{background:var(--s2);}
+.filter-badge{position:absolute;top:8px;right:10px;width:16px;height:16px;background:var(--accent);border-radius:50%;font-size:9px;font-weight:700;color:white;display:none;align-items:center;justify-content:center;}
+.filter-badge.show{display:flex;}
+
+/* Quick chips */
+.chips-bar{display:flex;align-items:center;gap:6px;margin-top:8px;padding:0 4px;overflow-x:auto;scrollbar-width:none;}
+.chips-bar::-webkit-scrollbar{display:none;}
+.fchip{display:flex;align-items:center;gap:5px;padding:6px 13px;background:var(--surface);border-radius:20px;box-shadow:var(--sh);border:none;font-size:12px;font-weight:500;color:var(--t2);white-space:nowrap;transition:all .15s;flex-shrink:0;}
+.fchip:hover{background:var(--s2);}
+.fchip.on{background:var(--alt);color:var(--accent);box-shadow:0 2px 6px rgba(26,115,232,.2),0 0 0 1px rgba(26,115,232,.2);}
+.cdot{width:7px;height:7px;border-radius:50%;}
+
+/* Filter drawer */
+.fdr{position:absolute;top:0;right:0;bottom:0;width:340px;z-index:900;background:var(--surface);box-shadow:-2px 0 16px rgba(0,0,0,.15);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);}
+.fdr.open{transform:translateX(0);}
+.fdr-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.fdr-title{font-size:15px;font-weight:600;letter-spacing:-.02em;}
+.fdr-reset{background:none;border:none;font-size:12px;color:var(--accent);font-weight:500;padding:4px 8px;border-radius:4px;}
+.fdr-reset:hover{background:var(--alt);}
+.fdr-body{flex:1;overflow-y:auto;padding:0 18px 24px;}
+.fdr-body::-webkit-scrollbar{width:3px;}
+.fdr-body::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px;}
+.fdr-close{width:32px;height:32px;border-radius:50%;border:none;background:none;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:background .15s;}
+.fdr-close:hover{background:var(--s2);}
+
+/* Filter sections */
+.fs{padding:18px 0;border-bottom:1px solid var(--border);}
+.fs:last-child{border-bottom:none;}
+.fs-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;}
+
+/* Checkbox grid */
+.cb-grid{display:flex;flex-wrap:wrap;gap:6px;}
+.cb-item{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:all .12s;background:transparent;font-size:12px;color:var(--t2);font-weight:500;}
+.cb-item:hover{border-color:var(--accent);background:var(--alt);}
+.cb-item.on{border-color:var(--accent);background:var(--alt);color:var(--accent);}
+.cb-item input[type=checkbox]{display:none;}
+.cb-check{width:14px;height:14px;border-radius:3px;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .12s;}
+.cb-item.on .cb-check{background:var(--accent);border-color:var(--accent);}
+.cb-check svg{opacity:0;transition:opacity .12s;}
+.cb-item.on .cb-check svg{opacity:1;}
+
+/* Skills multi-select */
+.skill-wrap{display:flex;flex-wrap:wrap;gap:5px;}
+.sk-chip{padding:4px 10px;border-radius:16px;border:1px solid var(--border);font-size:11.5px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .12s;background:transparent;}
+.sk-chip:hover{border-color:var(--accent);color:var(--accent);}
+.sk-chip.on{background:var(--accent);border-color:var(--accent);color:white;}
+
+/* Range slider */
+.range-wrap{padding:4px 0;}
+.range-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.range-row input[type=range]{flex:1;accent-color:var(--accent);height:3px;cursor:pointer;}
+.range-lbl{font-size:12px;font-weight:600;color:var(--accent);min-width:56px;text-align:right;}
+.range-ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--m2);}
+
+/* Experience select */
+.exp-opts{display:flex;gap:6px;flex-wrap:wrap;}
+.exp-opt{padding:5px 12px;border-radius:20px;border:1px solid var(--border);font-size:12px;font-weight:500;color:var(--t2);cursor:pointer;transition:all .12s;background:transparent;}
+.exp-opt:hover{border-color:var(--accent);color:var(--accent);}
+.exp-opt.on{background:var(--accent);border-color:var(--accent);color:white;}
+
+/* Availability toggle */
+.avail-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;}
+.avail-lbl{font-size:12.5px;color:var(--t2);font-weight:500;}
+.avail-sub{font-size:11px;color:var(--m2);margin-top:1px;}
+.toggle{width:36px;height:20px;border-radius:10px;border:none;background:var(--border2);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
+.toggle.on{background:var(--accent);}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:white;transition:transform .2s;}
+.toggle.on::after{transform:translateX(16px);}
+
+/* Apply button */
+.fdr-foot{padding:14px 18px;border-top:1px solid var(--border);flex-shrink:0;}
+.apply-btn{width:100%;height:40px;background:var(--accent);border:none;border-radius:20px;color:white;font-size:13.5px;font-weight:600;transition:background .15s;}
+.apply-btn:hover{background:var(--ah);}
+
+/* Left panel */
+.panel{position:absolute;top:0;left:0;bottom:0;width:380px;z-index:500;background:var(--surface);box-shadow:2px 0 8px rgba(0,0,0,.15);display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .3s cubic-bezier(.16,1,.3,1);}
+.panel.open{transform:translateX(0);}
+.panel-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.panel-title{font-size:15px;font-weight:600;letter-spacing:-.02em;}
+.panel-count{font-size:12px;color:var(--muted);margin-left:6px;}
+.pclose{background:none;border:none;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:background .15s;}
+.pclose:hover{background:var(--s2);}
+.pscroll{flex:1;overflow-y:auto;}
+.pscroll::-webkit-scrollbar{width:4px;}
+.pscroll::-webkit-scrollbar-thumb{background:var(--s3);border-radius:4px;}
+
+/* Sort bar */
+.sort-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.sort-lbl{font-size:11px;color:var(--muted);}
+.sort-sel{font-size:11.5px;font-weight:500;color:var(--t2);background:none;border:1px solid var(--border);border-radius:5px;padding:3px 7px;outline:none;}
+
+/* People cards */
+.pcard{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;}
+.pcard:hover{background:var(--s2);}
+.pcard.sel{background:#e8f0fe;}
+.pc-photo{width:46px;height:46px;border-radius:50%;flex-shrink:0;overflow:hidden;background:var(--s3);border:2px solid var(--border);position:relative;}
+.pc-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+.odot{position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid white;}
+.pc-body{flex:1;min-width:0;}
+.pc-name{font-size:13.5px;font-weight:600;letter-spacing:-.02em;margin-bottom:3px;}
+.pc-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:4px;}
+.rpill{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:3px;line-height:1.6;}
+.ilbl{font-size:11px;color:var(--m2);}
+.pc-bio{font-size:11.5px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:5px;}
+.skrow{display:flex;flex-wrap:wrap;gap:3px;}
+.skt{font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px;background:var(--s3);color:var(--muted);border:1px solid var(--border);}
+.pc-dist{font-size:11px;color:var(--muted);text-align:right;flex-shrink:0;white-space:nowrap;}
+.pc-dist strong{display:block;font-size:13px;font-weight:600;color:var(--t2);}
+
+/* Profile left drawer */
+.pdrawer{position:absolute;top:0;left:0;bottom:0;width:400px;z-index:700;background:var(--surface);box-shadow:3px 0 20px rgba(0,0,0,.18);display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .32s cubic-bezier(.16,1,.3,1);}
+.pdrawer.open{transform:translateX(0);}
+
+/* Hero cover + avatar */
+.pd-cover{height:140px;flex-shrink:0;position:relative;overflow:hidden;}
+.pd-cover-img{width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.75);}
+.pd-cover-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
+.pd-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.35);border:none;display:flex;align-items:center;justify-content:center;color:white;cursor:pointer;transition:background .15s;z-index:2;}
+.pd-close:hover{background:rgba(0,0,0,.55);}
+.pd-back{position:absolute;top:12px;left:12px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.35);border:none;display:flex;align-items:center;justify-content:center;color:white;cursor:pointer;transition:background .15s;z-index:2;}
+.pd-back:hover{background:rgba(0,0,0,.55);}
+
+/* Avatar overlapping cover */
+.pd-avi-wrap{position:absolute;bottom:-28px;left:20px;z-index:3;}
+.pd-avi{width:72px;height:72px;border-radius:50%;border:3px solid white;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.2);background:var(--s3);}
+.pd-avi img{width:100%;height:100%;object-fit:cover;display:block;}
+
+/* Online badge on avatar */
+.pd-online{position:absolute;bottom:4px;right:2px;width:14px;height:14px;border-radius:50%;background:var(--green);border:2.5px solid white;}
+
+/* Body */
+.pd-body{flex:1;overflow-y:auto;padding:0 20px 24px;}
+.pd-body::-webkit-scrollbar{width:3px;}
+.pd-body::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px;}
+
+/* Name + role row — sits below the overlapping avatar */
+.pd-header{padding-top:40px;margin-bottom:14px;}
+.pd-name{font-size:20px;font-weight:700;letter-spacing:-.03em;color:var(--text);margin-bottom:5px;}
+.pd-meta-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:6px;}
+.pd-dist-row{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-bottom:2px;}
+
+/* Section heading inside drawer */
+.pd-sh{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--m2);margin:16px 0 8px;}
+.pd-divider{height:1px;background:var(--border);margin:16px 0;}
+
+/* Bio */
+.pd-bio{font-size:13.5px;color:var(--t2);line-height:1.7;}
+
+/* Skills */
+.pd-skills{display:flex;flex-wrap:wrap;gap:6px;}
+.pd-sk{font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;background:var(--s2);border:1px solid var(--border);color:var(--t2);}
+
+/* Info grid */
+.pd-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.pd-cell{background:var(--s2);border-radius:8px;padding:10px 12px;}
+.pd-cell-lbl{font-size:10.5px;color:var(--m2);font-weight:500;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;}
+.pd-cell-val{font-size:12.5px;font-weight:600;color:var(--t2);}
+
+/* Verticals */
+.pd-verts{display:flex;flex-wrap:wrap;gap:5px;}
+.pd-vert{font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:4px;background:var(--alt);color:var(--accent);border:1px solid rgba(26,115,232,.2);}
+
+/* Action buttons */
+.pd-actions{display:flex;gap:10px;margin-top:20px;}
+.pd-btn{flex:1;height:42px;border-radius:21px;border:1.5px solid var(--border);background:var(--s2);color:var(--t2);font-size:13.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .15s;cursor:pointer;}
+.pd-btn:hover{background:var(--s3);border-color:var(--border2);}
+.pd-btn.pri{background:var(--accent);border-color:var(--accent);color:white;}
+.pd-btn.pri:hover{background:var(--ah);}
+
+/* Social row */
+.pd-social{display:flex;gap:8px;margin-top:12px;}
+.pd-soc-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:none;font-size:12px;color:var(--muted);cursor:pointer;transition:all .15s;font-weight:500;}
+.pd-soc-btn:hover{background:var(--s2);border-color:var(--border2);color:var(--t2);}
+
+/* ── Bottom summary sheet ── */
+.sumsheet{
+  position:absolute;bottom:0;left:0;right:0;z-index:550;
+  background:var(--surface);
+  border-radius:20px 20px 0 0;
+  box-shadow:0 -3px 20px rgba(0,0,0,.12);
+  transform:translateY(calc(100% - 72px));
+  transition:transform .35s cubic-bezier(.16,1,.3,1);
+  max-height:82vh;
+  display:flex;flex-direction:column;
+}
+.sumsheet.expanded{transform:translateY(0);}
+.sum-handle{
+  padding:10px 0 4px;display:flex;flex-direction:column;align-items:center;
+  gap:6px;cursor:pointer;flex-shrink:0;
+}
+.sum-pill{width:40px;height:4px;border-radius:2px;background:var(--border2);}
+.sum-peek{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px 10px;
+}
+.sum-peek-left{display:flex;align-items:center;gap:10px;}
+.sum-avatars{display:flex;align-items:center;}
+.sum-avi{width:30px;height:30px;border-radius:50%;border:2px solid white;overflow:hidden;background:var(--s3);margin-left:-8px;flex-shrink:0;}
+.sum-avi:first-child{margin-left:0;}
+.sum-avi img{width:100%;height:100%;object-fit:cover;display:block;}
+.sum-peek-txt{font-size:13.5px;font-weight:600;letter-spacing:-.02em;color:var(--text);}
+.sum-peek-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.sum-see-all{font-size:12.5px;font-weight:600;color:var(--accent);background:none;border:none;padding:4px 0;cursor:pointer;white-space:nowrap;}
+
+/* Divider inside sheet */
+.sum-divider{height:1px;background:var(--border);margin:0 18px;flex-shrink:0;}
+
+/* Scrollable card area */
+.sum-scroll{flex:1;overflow-y:auto;padding:12px 14px 24px;}
+.sum-scroll::-webkit-scrollbar{width:3px;}
+.sum-scroll::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px;}
+
+/* Summary cards — matching the screenshot style */
+.scard{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:14px 4px;border-bottom:1px solid var(--border);
+  cursor:pointer;transition:background .12s;border-radius:8px;
+  padding:14px 10px;
+}
+.scard:last-child{border-bottom:none;}
+.scard:hover{background:var(--s2);}
+.scard-avi{
+  width:60px;height:60px;border-radius:50%;flex-shrink:0;
+  overflow:hidden;border:2px solid var(--border);background:var(--s3);
+  position:relative;
+}
+.scard-avi img{width:100%;height:100%;object-fit:cover;display:block;}
+.scard-avi .odot{position:absolute;bottom:2px;right:2px;width:11px;height:11px;border-radius:50%;background:var(--green);border:2px solid white;}
+.scard-body{flex:1;min-width:0;}
+.scard-name{font-size:15px;font-weight:700;letter-spacing:-.025em;color:var(--text);margin-bottom:4px;}
+.scard-meta{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;}
+.scard-bio{font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.scard-skills{display:flex;flex-wrap:wrap;gap:4px;}
+.scard-sk{font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;background:var(--s3);border:1px solid var(--border);color:var(--muted);}
+.scard-dist{font-size:12px;color:var(--muted);text-align:right;flex-shrink:0;white-space:nowrap;padding-top:2px;}
+.scard-dist strong{display:block;font-size:15px;font-weight:700;color:var(--t2);letter-spacing:-.02em;}
+
+/* Chevron indicator */
+.sum-chevron{transition:transform .3s;}
+.sumsheet.expanded .sum-chevron{transform:rotate(180deg);}
+.mc-btn{width:40px;height:40px;background:var(--surface);border:none;border-radius:2px;display:flex;align-items:center;justify-content:center;box-shadow:var(--sh);color:var(--t2);font-size:18px;transition:background .15s;}
+.mc-btn:hover{background:var(--s2);}
+.mc-sep{height:1px;background:var(--border);}
+
+/* FAB */
+.fab{position:absolute;bottom:24px;right:14px;z-index:1000;background:var(--surface);border:none;border-radius:24px;box-shadow:var(--shl);padding:10px 18px;display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--text);transition:all .15s;}
+.fab:hover{box-shadow:0 6px 24px rgba(0,0,0,.2);}
+.fab-n{background:var(--accent);color:white;font-size:11px;font-weight:700;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+
+/* Radius badge */
+.rbadge{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:1000;background:var(--surface);border-radius:20px;box-shadow:var(--sh);padding:6px 14px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.rbadge strong{color:var(--t2);font-weight:600;}
+
+/* Leaflet overrides */
+.leaflet-control-zoom{display:none!important;}
+.leaflet-container{font-family:'Inter',sans-serif;}
+.lpp{cursor:pointer;}
+.lpp:hover{filter:brightness(1.05);}
+
+/* Toast */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:white;padding:8px 16px;border-radius:8px;font-size:12.5px;font-weight:500;opacity:0;pointer-events:none;white-space:nowrap;transition:all .22s;z-index:9999;box-shadow:var(--shl);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.tok{color:#4ade80;margin-right:5px;}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<!-- Search bar -->
+<div class="top-bar">
+  <div class="search-shell">
+    <div class="sg-logo">
+      <div class="lm">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M6 1L10.5 3.5V8.5L6 11L1.5 8.5V3.5L6 1Z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/>
+          <circle cx="6" cy="6" r="1.6" fill="white"/>
+        </svg>
+      </div>
+      Skillgraph
+    </div>
+    <div class="si-wrap">
+      <span class="si-ico">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="#9aa0a6" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="#9aa0a6" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </span>
+      <input id="srch" type="text" placeholder="Search name, skill or vertical…" oninput="doFilter()">
+    </div>
+    <div class="ssep"></div>
+    <button class="sfbtn" onclick="toggleDrawer()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M4 8h8M6 12h4" stroke="#1a73e8" stroke-width="1.6" stroke-linecap="round"/></svg>
+      Filters
+      <span class="filter-badge" id="fBadge">0</span>
+    </button>
+  </div>
+
+  <!-- Quick role chips -->
+  <div class="chips-bar">
+    <button class="fchip on" data-role="Founder"   onclick="toggleRoleChip(this)"><span class="cdot" style="background:#5b21b6"></span>Founder</button>
+    <button class="fchip on" data-role="Developer" onclick="toggleRoleChip(this)"><span class="cdot" style="background:#075985"></span>Developer</button>
+    <button class="fchip on" data-role="Designer"  onclick="toggleRoleChip(this)"><span class="cdot" style="background:#92400e"></span>Designer</button>
+    <button class="fchip on" data-role="Marketing" onclick="toggleRoleChip(this)"><span class="cdot" style="background:#991b1b"></span>Marketing</button>
+    <button class="fchip on" data-role="Data"      onclick="toggleRoleChip(this)"><span class="cdot" style="background:#065f46"></span>Data / AI</button>
+    <button class="fchip"    data-role="CTO"       onclick="toggleRoleChip(this)"><span class="cdot" style="background:#3730a3"></span>CTO</button>
+    <button class="fchip"    data-role="Finance"   onclick="toggleRoleChip(this)"><span class="cdot" style="background:#14532d"></span>Finance</button>
+    <button class="fchip"    data-role="Ops"       onclick="toggleRoleChip(this)"><span class="cdot" style="background:#9d174d"></span>Ops / PM</button>
+  </div>
+</div>
+
+<!-- Detailed Filter Drawer (right side) -->
+<div class="fdr" id="fDrawer">
+  <div class="fdr-hd">
+    <span class="fdr-title">Filters</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="fdr-reset" onclick="resetFilters()">Reset all</button>
+      <button class="fdr-close" onclick="closeDrawer()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="#5f6368" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="fdr-body">
+
+    <!-- DISTANCE -->
+    <div class="fs">
+      <div class="fs-title">Distance</div>
+      <div class="range-wrap">
+        <div class="range-row">
+          <input type="range" min="1" max="100" value="25" id="distSlider" oninput="updateDist(this.value)">
+          <span class="range-lbl" id="distLbl">25 km</span>
+        </div>
+        <div class="range-ticks"><span>1 km</span><span>25 km</span><span>50 km</span><span>100 km</span></div>
+      </div>
+    </div>
+
+    <!-- SPECIFIC SKILLS -->
+    <div class="fs">
+      <div class="fs-title">Specific Skills</div>
+      <div class="skill-wrap" id="skillChips">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- INTENT / LOOKING FOR -->
+    <div class="fs">
+      <div class="fs-title">Looking For</div>
+      <div class="cb-grid" id="intentChips">
+        <label class="cb-item on" onclick="toggleIntent(this,'Cofounder')"><span class="cb-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></span>Co-founder</label>
+        <label class="cb-item" onclick="toggleIntent(this,'Collaborator')"><span class="cb-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></span>Collaborator</label>
+        <label class="cb-item" onclick="toggleIntent(this,'Advisor')"><span class="cb-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></span>Advisor</label>
+        <label class="cb-item" onclick="toggleIntent(this,'Hiring')"><span class="cb-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></span>Hiring</label>
+        <label class="cb-item" onclick="toggleIntent(this,'Mentorship')"><span class="cb-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></span>Mentorship</label>
+      </div>
+    </div>
+
+    <!-- EXPERIENCE LEVEL -->
+    <div class="fs">
+      <div class="fs-title">Experience Level</div>
+      <div class="exp-opts" id="expOpts">
+        <button class="exp-opt on" data-exp="any"    onclick="setExp(this)">Any</button>
+        <button class="exp-opt"    data-exp="junior"  onclick="setExp(this)">Junior (0–2 yrs)</button>
+        <button class="exp-opt"    data-exp="mid"     onclick="setExp(this)">Mid (3–5 yrs)</button>
+        <button class="exp-opt"    data-exp="senior"  onclick="setExp(this)">Senior (6–10 yrs)</button>
+        <button class="exp-opt"    data-exp="expert"  onclick="setExp(this)">Expert (10+ yrs)</button>
+      </div>
+    </div>
+
+    <!-- INDUSTRY / VERTICAL -->
+    <div class="fs">
+      <div class="fs-title">Industry Vertical</div>
+      <div class="skill-wrap" id="vertChips">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- AVAILABILITY -->
+    <div class="fs">
+      <div class="fs-title">Availability</div>
+      <div class="avail-row">
+        <div>
+          <div class="avail-lbl">Active now</div>
+          <div class="avail-sub">Show only people online in the last 24h</div>
+        </div>
+        <button class="toggle" id="togOnline" onclick="toggleAvail('online',this)"></button>
+      </div>
+      <div class="avail-row">
+        <div>
+          <div class="avail-lbl">Full-time only</div>
+          <div class="avail-sub">Looking for full-time commitments</div>
+        </div>
+        <button class="toggle" id="togFT" onclick="toggleAvail('fulltime',this)"></button>
+      </div>
+      <div class="avail-row">
+        <div>
+          <div class="avail-lbl">Open to equity</div>
+          <div class="avail-sub">Willing to work for equity / pre-revenue</div>
+        </div>
+        <button class="toggle on" id="togEquity" onclick="toggleAvail('equity',this)"></button>
+      </div>
+    </div>
+
+    <!-- FUNDING STAGE INTEREST -->
+    <div class="fs">
+      <div class="fs-title">Funding Stage Interest</div>
+      <div class="cb-grid" id="stageChips">
+        <label class="cb-item on" onclick="toggleStage(this,'Idea')"><span class="cb-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></span>Idea stage</label>
+        <label class="cb-item on" onclick="toggleStage(this,'Pre-seed')"><span class="cb-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></span>Pre-seed</label>
+        <label class="cb-item" onclick="toggleStage(this,'Seed')"><span class="cb-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></span>Seed</label>
+        <label class="cb-item" onclick="toggleStage(this,'Series A')"><span class="cb-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></span>Series A+</label>
+        <label class="cb-item" onclick="toggleStage(this,'Bootstrapped')"><span class="cb-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></span>Bootstrapped</label>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="fdr-foot">
+    <button class="apply-btn" onclick="applyFilters()">Apply filters · <span id="applyCount">12</span> results</button>
+  </div>
+</div>
+
+<!-- Map controls -->
+<div class="map-ctrl">
+  <button class="mc-btn" onclick="map.zoomIn()">+</button>
+  <div class="mc-sep"></div>
+  <button class="mc-btn" onclick="map.zoomOut()" style="font-size:22px;line-height:1">−</button>
+</div>
+
+<!-- Left panel -->
+<div class="panel" id="panel">
+  <div class="panel-hd">
+    <div style="display:flex;align-items:baseline;gap:4px">
+      <span class="panel-title">Builders nearby</span>
+      <span class="panel-count" id="pCount"></span>
+    </div>
+    <button class="pclose" onclick="closePanel()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="#5f6368" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="sort-bar">
+    <span class="sort-lbl" id="pCount2"></span>
+    <select class="sort-sel" onchange="sortBy(this.value)">
+      <option value="dist">Nearest first</option>
+      <option value="alpha">Name A–Z</option>
+      <option value="recent">Most recent</option>
+    </select>
+  </div>
+  <div class="pscroll" id="pList"></div>
+</div>
+
+<!-- FAB — opens left panel list -->
+<button class="fab" id="fab" onclick="togglePanel()">
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="2" rx="1" fill="#5f6368"/><rect x="1" y="6" width="8" height="2" rx="1" fill="#5f6368"/><rect x="1" y="10" width="10" height="2" rx="1" fill="#5f6368"/></svg>
+  View list
+  <div class="fab-n" id="fabN">12</div>
+</button>
+
+<!-- Radius badge -->
+<div class="rbadge">
+  <svg width="9" height="11" viewBox="0 0 9 11" fill="none"><path d="M4.5 0C2.015 0 0 2.015 0 4.5 0 7.875 4.5 11 4.5 11S9 7.875 9 4.5C9 2.015 6.985 0 4.5 0zm0 6.125A1.625 1.625 0 1 1 4.5 2.875a1.625 1.625 0 0 1 0 3.25z" fill="#9aa0a6"/></svg>
+  <strong>Cork City</strong> · <span id="rbTxt">25 km radius</span> · <span style="color:#34a853;font-weight:600" id="rbCount">12 matches</span>
+</div>
+
+<!-- ── BOTTOM SUMMARY SHEET (peek + swipe up) ── -->
+<div class="sumsheet" id="sumSheet">
+  <!-- Handle + peek row — always visible -->
+  <div class="sum-handle" onclick="toggleSumSheet()">
+    <div class="sum-pill"></div>
+  </div>
+  <div class="sum-peek">
+    <div class="sum-peek-left">
+      <div class="sum-avatars" id="sumAvatars"></div>
+      <div>
+        <div class="sum-peek-txt" id="sumPeekTxt">12 builders nearby</div>
+        <div class="sum-peek-sub" id="sumPeekSub">Tap to see all profiles</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="sum-see-all" onclick="event.stopPropagation();toggleSumSheet()">See all
+        <svg class="sum-chevron" id="sumChevron" width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline;vertical-align:middle;margin-left:2px"><path d="M2 4l4 4 4-4" stroke="#1a73e8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="sum-divider"></div>
+
+  <!-- Full scrollable card list -->
+  <div class="sum-scroll" id="sumList"></div>
+</div>
+
+<!-- Profile left drawer (opens on pin click) -->
+<div class="pdrawer" id="pdrawer">
+  <!-- Cover photo / hero -->
+  <div class="pd-cover" id="pdCover">
+    <div class="pd-cover-fallback" id="pdCoverFb"></div>
+    <button class="pd-back" onclick="closePDrawer()" title="Back">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="pd-close" onclick="closePDrawer()" title="Close">
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+    <div class="pd-avi-wrap">
+      <div class="pd-avi" id="pdAvi"></div>
+      <div class="pd-online" id="pdOnline" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Scrollable body -->
+  <div class="pd-body">
+    <div class="pd-header">
+      <div class="pd-name" id="pdName"></div>
+      <div class="pd-meta-row" id="pdMeta"></div>
+      <div class="pd-dist-row" id="pdDist"></div>
+    </div>
+
+    <div class="pd-sh">About</div>
+    <div class="pd-bio" id="pdBio"></div>
+
+    <div class="pd-divider"></div>
+
+    <div class="pd-sh">Skills</div>
+    <div class="pd-skills" id="pdSkills"></div>
+
+    <div class="pd-divider"></div>
+
+    <div class="pd-sh">Details</div>
+    <div class="pd-grid" id="pdGrid"></div>
+
+    <div style="margin-top:14px">
+      <div class="pd-sh" style="margin-top:0">Industry Verticals</div>
+      <div class="pd-verts" id="pdVerts"></div>
+    </div>
+
+    <div class="pd-actions">
+      <button class="pd-btn" onclick="toast('Messaging coming soon')">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="10" rx="2" stroke="#3c4043" stroke-width="1.4"/><path d="M4 14.5l4-3.5 4 3.5" stroke="#3c4043" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Message
+      </button>
+      <button class="pd-btn pri" onclick="toast('Connection request sent!')">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="white" stroke-width="1.4"/><path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="white" stroke-width="1.4" stroke-linecap="round"/><path d="M13 8l1.5 1.5L17 7" stroke="white" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Connect
+      </button>
+    </div>
+
+    <div class="pd-social">
+      <button class="pd-soc-btn" onclick="toast('LinkedIn profile coming soon')">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M4 6v6M4 4v.01M7 12V9c0-1 .5-2 2-2s2 1 2 2v3M7 6v6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        LinkedIn
+      </button>
+      <button class="pd-soc-btn" onclick="toast('Twitter profile coming soon')">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 2l5.5 7L2 14h1.5l4-4.5L11 14h3L8.5 6.5 14 2h-1.5L7.5 6 5 2H2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        Twitter
+      </button>
+      <button class="pd-soc-btn" onclick="toast('Portfolio coming soon')">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M2 8h12M8 2c-2 2-3 4-3 6s1 4 3 6M8 2c2 2 3 4 3 6s-1 4-3 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Portfolio
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+const PAL = {
+  Founder:   {bg:'#5b21b6',lt:'#f5f3ff',bd:'#ddd6fe'},
+  Developer: {bg:'#075985',lt:'#f0f9ff',bd:'#bae6fd'},
+  Designer:  {bg:'#92400e',lt:'#fffbeb',bd:'#fde68a'},
+  Marketing: {bg:'#991b1b',lt:'#fef2f2',bd:'#fecaca'},
+  Data:      {bg:'#065f46',lt:'#f0fdfa',bd:'#99f6e4'},
+  CTO:       {bg:'#3730a3',lt:'#eef2ff',bd:'#c7d2fe'},
+  Finance:   {bg:'#14532d',lt:'#f0fdf4',bd:'#bbf7d0'},
+  Ops:       {bg:'#9d174d',lt:'#fdf2f8',bd:'#fbcfe8'},
+};
+
+// Real Unsplash photos — free stock images of professionals
+const PHOTOS = {
+  1:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop&crop=face',
+  2:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop&crop=face',
+  3:'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&h=120&fit=crop&crop=face',
+  4:'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&h=120&fit=crop&crop=face',
+  5:'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop&crop=face',
+  6:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&h=120&fit=crop&crop=face',
+  7:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&h=120&fit=crop&crop=face',
+  8:'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&h=120&fit=crop&crop=face',
+  9:'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120&h=120&fit=crop&crop=face',
+  10:'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=120&h=120&fit=crop&crop=face',
+  11:'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=120&h=120&fit=crop&crop=face',
+  12:'https://images.unsplash.com/photo-1463453091185-61582044d556?w=120&h=120&fit=crop&crop=face',
+};
+
+const ALL_SKILLS = ['React','Node.js','AWS','Python','PyTorch','Figma','Branding','Growth','SEO','Fundraising','GTM','Swift','iOS','Go','Postgres','NLP','LLMs','Kubernetes','Firebase','Webflow','Agile','FP&A','VC'];
+const ALL_VERTS  = ['Fintech','Health Tech','SaaS','EdTech','E-commerce','Climate','HR Tech','Logistics','AI/ML','Media','Consumer','B2B'];
+
+const CORK = [51.8985, -8.4756];
+const PEOPLE = [
+  {id:1,  name:'Aoife Murphy',    role:'Developer', ini:'AM', dist:2.1,  online:true,  look:'Cofounder',    exp:'senior',  equity:true,  fulltime:true,  stages:['Idea','Pre-seed'],   verticals:['SaaS','Health Tech'],  bio:'Full-stack engineer (React/Node). Built 2 B2B SaaS products. Ready to co-found for the first time.',    skills:['React','Node.js','AWS'],    lat:51.910, lng:-8.468},
+  {id:2,  name:'Ciarán Walsh',    role:'Designer',  ini:'CW', dist:3.4,  online:false, look:'Cofounder',    exp:'senior',  equity:true,  fulltime:true,  stages:['Pre-seed','Seed'],    verticals:['SaaS','Consumer'],     bio:'Product designer, 6 yrs. Shipped at Stripe and two startups. Obsessed with B2C UX and conversion.',    skills:['Figma','Branding'],        lat:51.895, lng:-8.440},
+  {id:3,  name:'Niamh O\'Brien',  role:'Founder',   ini:'NO', dist:4.8,  online:true,  look:'Cofounder',    exp:'expert',  equity:true,  fulltime:true,  stages:['Idea','Pre-seed'],   verticals:['Fintech','Health Tech'],bio:'2× founder, 1 exit. Exploring fintech and insurance. Seeking a technical co-founder urgently.',          skills:['Fundraising','GTM'],        lat:51.882, lng:-8.490},
+  {id:4,  name:'Tadhg Brennan',   role:'Data',      ini:'TB', dist:6.2,  online:true,  look:'Collaborator', exp:'mid',     equity:false, fulltime:false, stages:['Seed','Series A'],    verticals:['AI/ML','HR Tech'],     bio:'ML engineer at a university spin-out. NLP, computer vision. Building AI hiring tools on the side.',     skills:['Python','PyTorch','NLP'],   lat:51.902, lng:-8.415},
+  {id:5,  name:'Sinéad Foley',    role:'Marketing', ini:'SF', dist:7.1,  online:false, look:'Cofounder',    exp:'expert',  equity:true,  fulltime:true,  stages:['Pre-seed','Seed'],    verticals:['SaaS','B2B'],          bio:'Growth lead (Series A–B). Scaled Irish SaaS companies to €1M ARR. Seeking a technical co-founder.',    skills:['Growth','SEO'],            lat:51.878, lng:-8.458},
+  {id:6,  name:'Dáithí Quinn',    role:'Developer', ini:'DQ', dist:8.5,  online:true,  look:'Hiring',       exp:'mid',     equity:false, fulltime:true,  stages:['Seed','Series A'],    verticals:['Health Tech','Consumer'],bio:'Mobile-first dev (React Native & Swift). 3 apps on the App Store. Interested in health tech.',         skills:['Swift','iOS','Firebase'],  lat:51.916, lng:-8.504},
+  {id:7,  name:'Emma Lucey',      role:'Founder',   ini:'EL', dist:9.0,  online:true,  look:'Advisor',      exp:'expert',  equity:true,  fulltime:false, stages:['Pre-seed','Seed'],    verticals:['HR Tech','SaaS'],      bio:'Ex-CTO turned founder. Built and sold a HR-tech product. Now advising early-stage companies.',          skills:['Fundraising','GTM'],       lat:51.886, lng:-8.423},
+  {id:8,  name:'Rónán Stafford',  role:'CTO',       ini:'RS', dist:10.2, online:false, look:'Cofounder',    exp:'expert',  equity:true,  fulltime:true,  stages:['Idea','Pre-seed'],   verticals:['AI/ML','B2B'],         bio:'Founding engineer at 3 startups. Between ventures. Deep in AI/ML infrastructure and platform engineering.',skills:['Kubernetes','Python'],     lat:51.870, lng:-8.510},
+  {id:9,  name:'Fiona Casey',     role:'Finance',   ini:'FC', dist:12.4, online:true,  look:'Cofounder',    exp:'expert',  equity:true,  fulltime:true,  stages:['Pre-seed','Seed','Series A'],verticals:['Fintech','SaaS'],  bio:'CFO background in VC-backed scale-ups. Covers fundraising, cap tables, and investor relations.',        skills:['Fundraising','FP&A','VC'], lat:51.905, lng:-8.388},
+  {id:10, name:'Pádraig Lee',     role:'Ops',       ini:'PL', dist:14.1, online:false, look:'Collaborator', exp:'senior',  equity:false, fulltime:false, stages:['Seed','Series A'],    verticals:['Logistics','Media'],   bio:'Product and ops lead. Built digital products across health, logistics, and media verticals.',            skills:['Agile'],                   lat:51.866, lng:-8.442},
+  {id:11, name:'Máire Duggan',    role:'Designer',  ini:'MD', dist:15.8, online:true,  look:'Cofounder',    exp:'mid',     equity:true,  fulltime:true,  stages:['Idea','Pre-seed'],   verticals:['Consumer','EdTech'],   bio:'Brand and product designer. Helped 12 startups launch. Wants to be on a founding team from day one.',  skills:['Figma','Branding','Webflow'],lat:51.874,lng:-8.396},
+  {id:12, name:'Cormac Healy',    role:'Developer', ini:'CH', dist:18.3, online:false, look:'Cofounder',    exp:'senior',  equity:true,  fulltime:true,  stages:['Pre-seed','Seed'],    verticals:['Logistics','B2B'],     bio:'Backend architect (Go, Postgres, microservices). Interested in logistics and supply chain problems.',   skills:['Go','Postgres'],           lat:51.922, lng:-8.396},
+];
+
+// ── Filter state ──
+let roles    = new Set(['Founder','Developer','Designer','Marketing','Data']);
+let intents  = new Set(['Cofounder']);
+let selSkills= new Set();
+let selVerts = new Set();
+let selStages= new Set(['Idea','Pre-seed']);
+let expLevel = 'any';
+let maxDist  = 25;
+let onlyOnline   = false;
+let onlyFulltime = false;
+let onlyEquity   = true;
+let selId    = null;
+let panelOpen= false;
+let drawerOpen=false;
+let markers  = {};
+
+// ── Init skill/vert chips ──
+function initChips() {
+  document.getElementById('skillChips').innerHTML = ALL_SKILLS.map(s =>
+    `<button class="sk-chip${selSkills.has(s)?' on':''}" onclick="toggleSkill(this,'${s}')">${s}</button>`
+  ).join('');
+  document.getElementById('vertChips').innerHTML = ALL_VERTS.map(v =>
+    `<button class="sk-chip${selVerts.has(v)?' on':''}" onclick="toggleVert(this,'${v}')">${v}</button>`
+  ).join('');
+}
+
+// ── Map ──
+const map = L.map('map', {center:CORK, zoom:12, zoomControl:false, attributionControl:true});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains:'abcd', maxZoom:19
+}).addTo(map);
+
+// "You" marker
+const youHtml = `<div style="width:46px;height:46px;border-radius:50%;border:3px solid white;background:#1a73e8;box-shadow:0 2px 8px rgba(26,115,232,.5),0 0 0 8px rgba(26,115,232,.12);overflow:hidden;display:flex;align-items:center;justify-content:center;">
+  <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop&crop=face" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentNode.innerHTML='<span style=\\'color:white;font-weight:700;font-size:13px\\'>EH</span>'"/>
+</div>`;
+L.marker(CORK, {icon:L.divIcon({className:'',html:youHtml,iconSize:[46,46],iconAnchor:[23,23]}),zIndexOffset:999})
+  .addTo(map).bindTooltip('<strong>You</strong> · Cork City',{direction:'top',offset:[0,-26]});
+
+const radiusCircle = L.circle(CORK, {radius:25000,color:'#1a73e8',weight:1.5,opacity:.22,fillColor:'#1a73e8',fillOpacity:.04,dashArray:'6 5'}).addTo(map);
+
+function pinHtml(p, sel) {
+  const c = PAL[p.role]||PAL.Founder;
+  const sz = sel ? 54 : 46;
+  const bdr = sel ? '3px solid #1a73e8' : '3px solid white';
+  const shd = sel ? '0 2px 14px rgba(26,115,232,.5),0 0 0 4px rgba(26,115,232,.16)' : '0 2px 8px rgba(0,0,0,.22),0 0 0 1px rgba(0,0,0,.06)';
+  const halo = sel ? `<div style="position:absolute;inset:-7px;border-radius:50%;background:rgba(26,115,232,.1);"></div>` : '';
+  const online = p.online ? `<div style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#34a853;border:2.5px solid white;z-index:2;"></div>` : '';
+  return `<div style="position:relative;width:${sz}px;height:${sz}px;">${halo}<div style="width:${sz}px;height:${sz}px;border-radius:50%;border:${bdr};box-shadow:${shd};overflow:hidden;background:${c.lt};">
+    <img src="${PHOTOS[p.id]}" style="width:100%;height:100%;object-fit:cover;display:block;" alt="${p.name}"
+         onerror="this.style.display='none';this.parentNode.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;background:${c.lt};color:${c.bg}\\'>${p.ini}</div>'"/>
+  </div>${online}</div>`;
+}
+
+function placeMarkers() {
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+  const vis = new Set(getFiltered().map(p => p.id));
+  PEOPLE.forEach(p => {
+    const isSel = selId === p.id;
+    const isVis = vis.has(p.id);
+    const sz = isSel ? 54 : 46;
+    const mk = L.marker([p.lat,p.lng],{
+      icon: L.divIcon({className:'lpp',html:pinHtml(p,isSel),iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]}),
+      opacity: isVis ? 1 : 0.18,
+      zIndexOffset: isSel ? 600 : 0
+    }).addTo(map);
+    mk.on('click', ()=>selectPerson(p.id));
+    markers[p.id] = mk;
+  });
+}
+
+// ── Filter logic ──
+function getFiltered() {
+  const q = document.getElementById('srch').value.toLowerCase();
+  return PEOPLE.filter(p => {
+    if (!roles.has(p.role)) return false;
+    if (intents.size > 0 && !intents.has(p.look)) return false;
+    if (p.dist > maxDist) return false;
+    if (onlyOnline && !p.online) return false;
+    if (onlyFulltime && !p.fulltime) return false;
+    if (onlyEquity && !p.equity) return false;
+    if (expLevel !== 'any' && p.exp !== expLevel) return false;
+    if (selSkills.size > 0 && ![...selSkills].some(sk => p.skills.includes(sk))) return false;
+    if (selVerts.size > 0 && ![...selVerts].some(v => p.verticals.includes(v))) return false;
+    if (selStages.size > 0 && !p.stages.some(s => selStages.has(s))) return false;
+    if (q && !p.name.toLowerCase().includes(q) && !p.role.toLowerCase().includes(q) &&
+        !p.bio.toLowerCase().includes(q) && !p.skills.some(s=>s.toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+
+function doFilter() { refreshPanel(); placeMarkers(); updateBadge(); refreshSumSheet(); }
+
+function updateBadge() {
+  const n = getFiltered().length;
+  document.getElementById('rbCount').textContent = n + ' matches';
+  document.getElementById('applyCount').textContent = n;
+  // count active filters
+  let cnt = 0;
+  if (selSkills.size) cnt += selSkills.size;
+  if (selVerts.size)  cnt += selVerts.size;
+  if (onlyOnline)     cnt++;
+  if (onlyFulltime)   cnt++;
+  if (!onlyEquity)    cnt++;
+  if (expLevel !== 'any') cnt++;
+  if (maxDist !== 25) cnt++;
+  const badge = document.getElementById('fBadge');
+  badge.textContent = cnt;
+  badge.classList.toggle('show', cnt > 0);
+}
+
+// Toggle helpers
+function toggleRoleChip(el) {
+  const r = el.dataset.role;
+  el.classList.toggle('on');
+  if (roles.has(r)) roles.delete(r); else roles.add(r);
+  doFilter();
+}
+function toggleIntent(el, v) {
+  el.classList.toggle('on');
+  if (intents.has(v)) intents.delete(v); else intents.add(v);
+  doFilter();
+}
+function toggleSkill(el, v) {
+  el.classList.toggle('on');
+  if (selSkills.has(v)) selSkills.delete(v); else selSkills.add(v);
+  doFilter();
+}
+function toggleVert(el, v) {
+  el.classList.toggle('on');
+  if (selVerts.has(v)) selVerts.delete(v); else selVerts.add(v);
+  doFilter();
+}
+function toggleStage(el, v) {
+  el.classList.toggle('on');
+  if (selStages.has(v)) selStages.delete(v); else selStages.add(v);
+  doFilter();
+}
+function setExp(el) {
+  document.querySelectorAll('.exp-opt').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on');
+  expLevel = el.dataset.exp;
+  doFilter();
+}
+function updateDist(v) {
+  maxDist = parseInt(v);
+  document.getElementById('distLbl').textContent = v + ' km';
+  document.getElementById('rbTxt').textContent = v + ' km radius';
+  radiusCircle.setRadius(maxDist * 1000);
+  doFilter();
+}
+function toggleAvail(type, el) {
+  el.classList.toggle('on');
+  if (type==='online')   onlyOnline   = el.classList.contains('on');
+  if (type==='fulltime') onlyFulltime = el.classList.contains('on');
+  if (type==='equity')   onlyEquity   = el.classList.contains('on');
+  doFilter();
+}
+function applyFilters() { closeDrawer(); doFilter(); }
+function resetFilters() {
+  selSkills.clear(); selVerts.clear(); selStages.clear();
+  selStages.add('Idea'); selStages.add('Pre-seed');
+  expLevel='any'; onlyOnline=false; onlyFulltime=false; onlyEquity=true; maxDist=25;
+  document.getElementById('distSlider').value=25;
+  document.getElementById('distLbl').textContent='25 km';
+  document.getElementById('rbTxt').textContent='25 km radius';
+  radiusCircle.setRadius(25000);
+  document.getElementById('togOnline').classList.remove('on');
+  document.getElementById('togFT').classList.remove('on');
+  document.getElementById('togEquity').classList.add('on');
+  document.querySelectorAll('.exp-opt').forEach(e=>e.classList.toggle('on',e.dataset.exp==='any'));
+  initChips();
+  // reset stage chips
+  document.querySelectorAll('#stageChips .cb-item').forEach(el=>{
+    const v = el.textContent.trim().replace('✓','').trim();
+    const on = selStages.has(v) || v==='Idea stage'||v==='Pre-seed';
+    el.classList.toggle('on',on);
+  });
+  doFilter();
+}
+
+// ── Panel ──
+function refreshPanel() {
+  const f = getFiltered();
+  const cnt = f.length;
+  document.getElementById('pCount').textContent = `(${cnt})`;
+  document.getElementById('pCount2').textContent = `${cnt} people found`;
+  document.getElementById('fabN').textContent = cnt;
+
+  if (!f.length) {
+    document.getElementById('pList').innerHTML = `<div style="padding:32px 18px;text-align:center;color:#9aa0a6;font-size:12px;line-height:1.7">No builders match your filters.<br>Try adjusting the criteria.</div>`;
+    return;
+  }
+  const expMap = {junior:'0–2 yrs',mid:'3–5 yrs',senior:'6–10 yrs',expert:'10+ yrs'};
+  document.getElementById('pList').innerHTML = f.map((p,i) => {
+    const c = PAL[p.role]||PAL.Founder;
+    return `<div class="pcard${selId===p.id?' sel':''}" onclick="selectPerson(${p.id})">
+      <div class="pc-photo" style="border-color:${c.bd}">
+        <img src="${PHOTOS[p.id]}" alt="${p.name}" loading="lazy"
+             onerror="this.parentNode.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:${c.lt};color:${c.bg}\\'>${p.ini}</div>'"/>
+        ${p.online?'<div class="odot"></div>':''}
+      </div>
+      <div class="pc-body">
+        <div class="pc-name">${p.name}</div>
+        <div class="pc-meta">
+          <span class="rpill" style="background:${c.lt};color:${c.bg};border:1px solid ${c.bd}">${p.role}</span>
+          <span class="ilbl">${p.look}</span>
+          ${p.equity?'<span style="font-size:10px;color:#065f46;background:#f0fdfa;border:1px solid #99f6e4;padding:1px 5px;border-radius:3px;font-weight:600">equity</span>':''}
+        </div>
+        <div class="pc-bio">${p.bio}</div>
+        <div class="skrow">${p.skills.map(s=>`<span class="skt">${s}</span>`).join('')}</div>
+      </div>
+      <div class="pc-dist"><strong>${p.dist}</strong>km</div>
+    </div>`;
+  }).join('');
+}
+
+function sortBy(v) {
+  PEOPLE.sort((a,b)=>v==='dist'?a.dist-b.dist:v==='alpha'?a.name.localeCompare(b.name):Math.random()-.5);
+  refreshPanel();
+}
+
+// ── Select person → open left profile drawer ──
+function selectPerson(id) {
+  selId = (selId===id) ? null : id;
+  const p = PEOPLE.find(x=>x.id===id);
+
+  if (selId && p) {
+    const c = PAL[p.role];
+    map.flyTo([p.lat,p.lng], Math.max(map.getZoom(),13), {duration:.8});
+
+    // Blurred cover banner
+    const pdCover = document.getElementById('pdCover');
+    const old = pdCover.querySelector('.cover-img');
+    if (old) old.remove();
+    const coverImg = document.createElement('img');
+    coverImg.className = 'cover-img';
+    coverImg.src = PHOTOS[p.id];
+    coverImg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(14px) brightness(.6);transform:scale(1.12);';
+    coverImg.onerror = function(){ this.remove(); };
+    pdCover.insertBefore(coverImg, pdCover.firstChild);
+    document.getElementById('pdCoverFb').style.background = c.lt;
+
+    // Avatar
+    document.getElementById('pdAvi').innerHTML =
+      `<img src="${PHOTOS[p.id]}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;"
+            onerror="this.parentNode.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;background:${c.lt};color:${c.bg}\\'>${p.ini}</div>'"/>`;
+
+    // Online dot
+    document.getElementById('pdOnline').style.display = p.online ? 'block' : 'none';
+
+    // Name + meta
+    document.getElementById('pdName').textContent = p.name;
+    document.getElementById('pdMeta').innerHTML =
+      `<span class="rpill" style="background:${c.lt};color:${c.bg};border:1px solid ${c.bd};padding:2px 9px;border-radius:4px;font-size:11.5px;font-weight:700">${p.role}</span>
+       <span style="font-size:12px;color:var(--m2)">${p.look}</span>
+       ${p.online ? '<span style="font-size:12px;color:#34a853;font-weight:500;display:flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:50%;background:#34a853;display:inline-block"></span>Active now</span>' : '<span style="font-size:12px;color:var(--m2)">Offline</span>'}
+       ${p.equity ? '<span style="font-size:11px;color:#065f46;background:#f0fdfa;border:1px solid #99f6e4;padding:2px 7px;border-radius:3px;font-weight:600">Open to equity</span>' : ''}`;
+
+    const expMap = {junior:'0–2 yrs',mid:'3–5 yrs',senior:'6–10 yrs',expert:'10+ yrs'};
+    document.getElementById('pdDist').innerHTML =
+      `<svg width="10" height="12" viewBox="0 0 9 11" fill="none" style="flex-shrink:0"><path d="M4.5 0C2.015 0 0 2.015 0 4.5 0 7.875 4.5 11 4.5 11S9 7.875 9 4.5C9 2.015 6.985 0 4.5 0zm0 6.125A1.625 1.625 0 1 1 4.5 2.875a1.625 1.625 0 0 1 0 3.25z" fill="#9aa0a6"/></svg>
+       ${p.dist} km away&ensp;·&ensp;${expMap[p.exp]||p.exp} exp&ensp;·&ensp;${p.fulltime?'Full-time':'Part-time'}`;
+
+    // Bio
+    document.getElementById('pdBio').textContent = p.bio;
+
+    // Skills
+    document.getElementById('pdSkills').innerHTML =
+      p.skills.map(s=>`<span class="pd-sk">${s}</span>`).join('');
+
+    // Details grid
+    document.getElementById('pdGrid').innerHTML = `
+      <div class="pd-cell"><div class="pd-cell-lbl">Experience</div><div class="pd-cell-val">${expMap[p.exp]||p.exp}</div></div>
+      <div class="pd-cell"><div class="pd-cell-lbl">Commitment</div><div class="pd-cell-val">${p.fulltime?'Full-time':'Part-time'}</div></div>
+      <div class="pd-cell"><div class="pd-cell-lbl">Equity</div><div class="pd-cell-val" style="color:${p.equity?'#065f46':'var(--t2)'}">${p.equity?'Open to equity':'Salary only'}</div></div>
+      <div class="pd-cell"><div class="pd-cell-lbl">Status</div><div class="pd-cell-val" style="color:${p.online?'#34a853':'var(--m2)'}">${p.online?'Active now':'Offline'}</div></div>
+      <div class="pd-cell" style="grid-column:1/-1"><div class="pd-cell-lbl">Funding stages</div><div class="pd-cell-val">${p.stages.join(' · ')}</div></div>`;
+
+    // Verticals
+    document.getElementById('pdVerts').innerHTML =
+      p.verticals.map(v=>`<span class="pd-vert">${v}</span>`).join('');
+
+    // Open drawer, close list panel to avoid crowding
+    document.getElementById('pdrawer').classList.add('open');
+    if (panelOpen) closePanel();
+
+  } else {
+    document.getElementById('pdrawer').classList.remove('open');
+  }
+  placeMarkers();
+  refreshPanel();
+}
+
+function closePDrawer() { selId=null; document.getElementById('pdrawer').classList.remove('open'); placeMarkers(); refreshPanel(); }
+function togglePanel()  { panelOpen=!panelOpen; document.getElementById('panel').classList.toggle('open',panelOpen); if(panelOpen) { closePDrawer(); closeSumSheet(); } }
+function closePanel()   { panelOpen=false; document.getElementById('panel').classList.remove('open'); }
+function toggleDrawer() { drawerOpen=!drawerOpen; document.getElementById('fDrawer').classList.toggle('open',drawerOpen); }
+function closeDrawer()  { drawerOpen=false; document.getElementById('fDrawer').classList.remove('open'); }
+
+function toast(msg) {
+  const t = document.getElementById('toastEl');
+  t.innerHTML = `<span class="tok">✓</span>${msg}`;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+// ── Bottom Summary Sheet ──
+let sumExpanded = false;
+
+function toggleSumSheet() {
+  sumExpanded = !sumExpanded;
+  document.getElementById('sumSheet').classList.toggle('expanded', sumExpanded);
+  document.getElementById('sumChevron').style.transform = sumExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+  // close other panels when expanding
+  if (sumExpanded) { closePanel(); closePDrawer(); }
+}
+
+function closeSumSheet() {
+  sumExpanded = false;
+  document.getElementById('sumSheet').classList.remove('expanded');
+  document.getElementById('sumChevron').style.transform = 'rotate(0deg)';
+}
+
+function refreshSumSheet() {
+  const f = getFiltered();
+  const n = f.length;
+
+  // Peek row
+  document.getElementById('sumPeekTxt').textContent = `${n} builder${n!==1?'s':''} nearby`;
+  document.getElementById('sumPeekSub').textContent = n ? 'Tap to browse all profiles' : 'Adjust filters to find matches';
+
+  // Avatar stack (first 5)
+  document.getElementById('sumAvatars').innerHTML = f.slice(0,5).map((p,i) =>
+    `<div class="sum-avi" style="z-index:${5-i}">
+       <img src="${PHOTOS[p.id]}" alt="${p.name}" loading="lazy"
+            onerror="this.parentNode.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;background:${PAL[p.role]?.lt};color:${PAL[p.role]?.bg}\\'>${p.ini}</div>'"/>
+     </div>`
+  ).join('');
+
+  // Full card list
+  if (!f.length) {
+    document.getElementById('sumList').innerHTML = `<div style="padding:32px 14px;text-align:center;color:#9aa0a6;font-size:12.5px;line-height:1.7">No builders match your current filters.<br>Try widening the search radius or adjusting roles.</div>`;
+    return;
+  }
+
+  document.getElementById('sumList').innerHTML = f.map(p => {
+    const c = PAL[p.role] || PAL.Founder;
+    return `<div class="scard" onclick="selectPersonFromSheet(${p.id})">
+      <div class="scard-avi" style="border-color:${c.bd}">
+        <img src="${PHOTOS[p.id]}" alt="${p.name}" loading="lazy"
+             onerror="this.parentNode.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:${c.lt};color:${c.bg}\\'>${p.ini}</div>'"/>
+        ${p.online ? '<div class="odot"></div>' : ''}
+      </div>
+      <div class="scard-body">
+        <div class="scard-name">${p.name}</div>
+        <div class="scard-meta">
+          <span class="rpill" style="background:${c.lt};color:${c.bg};border:1px solid ${c.bd};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">${p.role}</span>
+          <span style="font-size:11.5px;color:var(--m2)">${p.look}</span>
+          ${p.equity ? '<span style="font-size:10.5px;color:#065f46;background:#f0fdfa;border:1px solid #99f6e4;padding:1px 6px;border-radius:3px;font-weight:600">equity</span>' : ''}
+        </div>
+        <div class="scard-bio">${p.bio}</div>
+        <div class="scard-skills">${p.skills.map(s=>`<span class="scard-sk">${s}</span>`).join('')}</div>
+      </div>
+      <div class="scard-dist"><strong>${p.dist}</strong>km</div>
+    </div>`;
+  }).join('');
+}
+
+function selectPersonFromSheet(id) {
+  // collapse the sheet then open the profile drawer
+  closeSumSheet();
+  setTimeout(() => selectPerson(id), 180);
+}
+
+// ── Boot ──
+initChips();
+placeMarkers();
+refreshPanel();
+updateBadge();
+refreshSumSheet();
+</script>
+</body>
+</html>
