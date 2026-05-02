@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Welcome to SkillGraph
 
-TODO: Document your project here
+SkillGraph helps entrepreneurs find local talent to work with and skilled talent find local entrepreneurs to work for.
