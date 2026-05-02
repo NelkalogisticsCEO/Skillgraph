@@ -1,7 +1,8 @@
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Map, User, Users, Bell, Settings, Sparkles, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const NAV = [
   { to: "/map", label: "Map", icon: Map },
@@ -13,7 +14,9 @@ const NAV = [
 
 export const TopNav = () => {
   const { pathname } = useLocation();
-  const isAuthed = pathname.startsWith("/map") || pathname.startsWith("/profile") || pathname.startsWith("/communities") || pathname.startsWith("/notifications") || pathname.startsWith("/settings");
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const isAuthed = !!user;
 
   return (
     <header className="sticky top-0 z-40 w-full">
@@ -62,8 +65,8 @@ export const TopNav = () => {
 
           <div className="flex items-center gap-2">
             {isAuthed ? (
-              <Button asChild variant="outline" size="sm">
-                <Link to="/">Log out</Link>
+              <Button variant="outline" size="sm" onClick={async () => { await signOut(); navigate("/"); }}>
+                Log out
               </Button>
             ) : (
               <>
